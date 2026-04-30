@@ -1,29 +1,56 @@
-## Discord Text Channel Replayer
+# Discord Chat Export Replayer
 
-Replay messages from a Discord chat export into another text channel through a webhook.
+Migrate messages from one Discord text channel to another, whether the destination is in the same server or a different server.
 
-This script reads a JSON export produced by DiscordChatExporter and recreates the message history in another Discord text channel while preserving:
+This project documents a simple workflow:
 
-- display name
-- avatar
+1. export a source channel with DiscordChatExporter
+2. point the script at that export
+3. replay the messages into a destination channel through a Discord webhook
+
+The replay keeps the conversation recognizable by preserving:
+
+- display names
+- avatars
 - message content
 - supported attachments
 - forwarded message content
 
-## Requirements
+## Before you start
+
+You will need:
 
 - Python 3.10+
-- A Discord webhook URL for the destination channel
-- A chat export in JSON format from DiscordChatExporter
+- Access to the source channel you want to export
+- Access to the destination channel where messages should be replayed
+- Permission to create or manage webhooks in the destination channel
 
-## 1. Export the source channel
+The export file and webhook URL are created during the setup steps below, so they do not need to exist ahead of time.
+
+## Setup
+
+### 1. Export the source channel
 
 1. Download DiscordChatExporter from https://github.com/Tyrrrz/DiscordChatExporter/releases
-2. Open `DiscordChatExporter.exe`
-3. Export the source channel as `JSON`
-4. Keep the exported file somewhere accessible to this project
+2. Run `DiscordChatExporter.exe`
+3. Find the Discord server that contains the text channel you want to copy
+4. In that server, select the source text channel you want to export
+5. Export that text channel as `JSON`
+6. Keep the exported file somewhere accessible to this project
 
-## 2. Install dependencies
+### 2. Create a webhook for the destination channel
+
+1. Open the destination text channel in Discord
+2. Open the channel settings for that channel
+3. Go to `Integrations`
+4. Open `Webhooks`
+5. Create a new webhook
+6. Optionally set the webhook name and avatar
+7. Click `Copy Webhook URL`
+
+That copied URL is the value you will use for `DISCORD_WEBHOOK_URL` in your `.env` file.
+
+### 3. Install dependencies
 
 ```bash
 python -m venv .venv
@@ -31,29 +58,39 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-If you already use another Python environment, install the same requirements there instead.
+If you already use another Python environment, install the same packages there instead.
 
-## 3. Configure environment variables
+### 4. Configure environment variables
 
-Create a local `.env` file from `.env.example` and fill in your values:
+Create a local `.env` file from `.env.example`, then fill in your values:
 
 ```env
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 EXPORT_JSON_FILE=clips.json
 ```
 
-Variable meanings:
+Variables:
 
-- `DISCORD_WEBHOOK_URL`: webhook for the destination channel
+- `DISCORD_WEBHOOK_URL`: webhook URL for the destination channel
 - `EXPORT_JSON_FILE`: path to the exported DiscordChatExporter JSON file
 
-## 4. Run the replay
+### 5. Run the replay
 
 ```bash
 python replay_discord.py
 ```
 
-The script will print progress in the terminal as it sends messages.
+The script prints progress in the terminal as each message is processed and sent.
+
+## What to expect
+
+The replayed messages look close to the original conversation, but they are posted by a webhook, so Discord shows an `APP` badge next to the displayed username.
+
+If an attachment is too large to upload safely, the script skips it and adds a warning to the replayed message. Example:
+
+```text
+⚠️ [System: 1 attachment(s) skipped because they exceeded the configured 10MB upload limit: Team_Fortress2-_2026-04-11_7-36-21_PM.mp4]
+```
 
 ## Notes
 
