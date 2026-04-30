@@ -1,0 +1,16 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local editor and test artifacts
+.pytest_cache/
+.mypy_cache/
+
+# Optional export/output files
+exports/
+*.log
+*.json
