@@ -67,12 +67,16 @@ Create a local `.env` file from `.env.example`, then fill in your values:
 ```env
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 EXPORT_JSON_FILE=clips.json
+REPLAY_DELAY_SECONDS=1.5
+UPLOAD_LIMIT_MB=10
 ```
 
 Variables:
 
 - `DISCORD_WEBHOOK_URL`: webhook URL for the destination channel
 - `EXPORT_JSON_FILE`: path to the exported DiscordChatExporter JSON file
+- `REPLAY_DELAY_SECONDS`: optional delay between messages, in seconds
+- `UPLOAD_LIMIT_MB`: optional webhook upload limit used to decide when attachments should be skipped
 
 ### 5. Run the replay
 
@@ -89,12 +93,13 @@ The replayed messages look close to the original conversation, but they are post
 If an attachment is too large to upload safely, the script skips it and adds a warning to the replayed message. Example:
 
 ```text
-⚠️ [System: 1 attachment(s) skipped because they exceeded the configured 10MB upload limit: Team_Fortress2-_2026-04-11_7-36-21_PM.mp4]
+⚠️ [System: 1 attachment(s) skipped because they exceeded the configured safe upload limit of 9MB: Team_Fortress2-_2026-04-11_7-36-21_PM.mp4]
 ```
 
 ## Notes
 
 - Attachments are re-uploaded when possible.
 - Files larger than the configured safe upload limit are skipped and noted in the replayed message.
-- The current safety cap is tuned for a 10 MB webhook upload limit.
+- By default, the script waits `1.5` seconds between messages.
+- By default, the script assumes a `10 MB` webhook upload limit and keeps a 10% safety margin for multipart upload overhead.
 - Empty messages with no uploadable attachments are skipped.

@@ -6,13 +6,34 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def get_env_float(name, default, min_value=None):
+    raw_value = os.getenv(name)
+    if raw_value is None or raw_value.strip() == '':
+        return default
+
+    try:
+        value = float(raw_value)
+    except ValueError:
+        print(f"Invalid {name}={raw_value!r}. Using default {default}.")
+        return default
+
+    if min_value is not None and value < min_value:
+        print(
+            f"Invalid {name}={raw_value!r}. Must be at least {min_value}. Using default {default}.")
+        return default
+
+    return value
+
+
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 JSON_FILE = os.getenv("EXPORT_JSON_FILE")
 RE_UPLOAD_FILES = True
-DELAY = 1.5
-UPLOAD_LIMIT_MB = 10
-# 9MB leaves room for multipart form data overhead under a 10MB upload limit.
-MAX_FILE_SIZE = 9 * 1024 * 1024
+DELAY = get_env_float("REPLAY_DELAY_SECONDS", 1.5, min_value=0.01)
+UPLOAD_LIMIT_MB = get_env_float("UPLOAD_LIMIT_MB", 10, min_value=1)
+SAFE_UPLOAD_LIMIT_MB = UPLOAD_LIMIT_MB * 0.9
+# Reserve 10% of the nominal upload limit for multipart form data overhead.
+MAX_FILE_SIZE = int(SAFE_UPLOAD_LIMIT_MB * 1024 * 1024)
 
 
 def get_attachment_size_bytes(attachment, file_url):
@@ -62,6 +83,14 @@ def get_replay_content_and_attachments(message):
 
 
 def replay_messages():
+    if not WEBHOOK_URL:
+        print("Error: DISCORD_WEBHOOK_URL is not set.")
+        return
+
+    if not JSON_FILE:
+        print("Error: EXPORT_JSON_FILE is not set.")
+        return
+
     if not os.path.exists(JSON_FILE):
         print(f"Error: {JSON_FILE} not found.")
         return
@@ -100,7 +129,7 @@ def replay_messages():
 
                 if file_size and file_size > MAX_FILE_SIZE:
                     print(
-                        f"Skipping {file_name} ({file_size / 1024 / 1024:.2f} MB) - Too large.")
+                        f"Skipping {file_name} ({file_size / 1024 / 1024:.2f} MB) - Exceeds the safe upload limit of {SAFE_UPLOAD_LIMIT_MB:g} MB.")
                     skipped_files.append(file_name)
                     continue
 
@@ -116,14 +145,14 @@ def replay_messages():
 
                         if actual_size > MAX_FILE_SIZE:
                             print(
-                                f"Skipping {file_name} ({actual_size / 1024 / 1024:.2f} MB) - Too large.")
+                                f"Skipping {file_name} ({actual_size / 1024 / 1024:.2f} MB) - Exceeds the safe upload limit of {SAFE_UPLOAD_LIMIT_MB:g} MB.")
                             skipped_files.append(file_name)
                             file_res.close()
                             continue
 
                         if total_upload_size + actual_size > MAX_FILE_SIZE:
                             print(
-                                f"Skipping {file_name} ({actual_size / 1024 / 1024:.2f} MB) - Message attachments would exceed upload limit.")
+                                f"Skipping {file_name} ({actual_size / 1024 / 1024:.2f} MB) - Message attachments would exceed the safe upload limit of {SAFE_UPLOAD_LIMIT_MB:g} MB.")
                             skipped_files.append(file_name)
                             file_res.close()
                             continue
@@ -141,7 +170,7 @@ def replay_messages():
 
         # Add a note to the message if we skipped anything
         if skipped_files:
-            warning = f"\n\n⚠️ *[System: {len(skipped_files)} attachment(s) skipped because they exceeded the configured {UPLOAD_LIMIT_MB}MB upload limit: {', '.join(skipped_files)}]*"
+            warning = f"\n\n⚠️ *[System: {len(skipped_files)} attachment(s) skipped because they exceeded the configured safe upload limit of {SAFE_UPLOAD_LIMIT_MB:g}MB: {', '.join(skipped_files)}]*"
             payload["content"] = (payload["content"] + warning).strip()
 
         if not payload["content"] and not files_to_upload:
